@@ -1,4 +1,4 @@
-import { createSerializer } from "../main";
+import { createSerializer, SerializerResult } from "../main";
 
 type User = { id: string; password: string; email: string };
 type Ctx = { locale: string };
@@ -75,11 +75,17 @@ describe("types", () => {
 
     const res = await a.serialize({} as unknown as User, {} as unknown as Ctx);
 
-    expectTypeOf(res).toEqualTypeOf<{
+    type Serialized = {
       id: string;
       email: number;
       bla: string | 123;
-    }>();
+    };
+
+    // @ts-expect-error
+    declare const b: SerializerResult<typeof a>;
+
+    expectTypeOf(b).toEqualTypeOf<Serialized>();
+    expectTypeOf(res).toEqualTypeOf<Serialized>();
   });
 
   test("works only with model", async () => {

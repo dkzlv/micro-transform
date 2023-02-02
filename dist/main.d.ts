@@ -17,5 +17,6 @@ type Serializer<Model, Context, Config extends ModelFields<Model, Context> = {},
     setCustomConfig: <T extends CustomFields<Model, Context>>(custom: T) => Serializer<Model, Context, Config, T>;
     serialize: (model: Model, ctx: Context) => Promise<ExtractModelResults<Model, Config> & ExtractCustomResults<Custom>>;
 };
+export type SerializerResult<T extends Serializer<any, any>> = MaybePromise<ReturnType<T["serialize"]>>;
 export declare function createSerializer<Model, Context = void, Config extends ModelFields<Model, Context> = {}, Custom extends CustomFields<Model, Context> = {}>(): Serializer<Model, Context, Config, Custom>;
 export {};

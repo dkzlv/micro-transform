@@ -44,6 +44,10 @@ type Serializer<
   >;
 };
 
+export type SerializerResult<T extends Serializer<any, any>> = MaybePromise<
+  ReturnType<T["serialize"]>
+>;
+
 export function createSerializer<
   Model,
   Context = void,
