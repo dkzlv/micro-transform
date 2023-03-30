@@ -19,9 +19,23 @@
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "engines": {
+    "node": "^14.0.0 || ^16.0.0 || >=18.0.0"
+  },
+  "directories": {
+    "lib": "dist"
+  },
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dkzlv/micro-transform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dkzlv/micro-transform/issues"
+  },
+  "homepage": "https://github.com/dkzlv/micro-transform#readme",
   "main": "./dist/micro-transform.umd.cjs",
   "module": "./dist/micro-transform.js",
   "types": "./dist/main.d.ts",
@@ -38,9 +52,5 @@
     "vite": "^3.0.4",
     "vite-plugin-dts": "^1.7.1",
     "vitest": "^0.26.2"
-  },
-  "engines": {
-    "pnpm": "7",
-    "node": "18"
   }
 }
