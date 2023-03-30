@@ -23,7 +23,7 @@ type ExtractCustomResults<Config> = {
     : never;
 };
 
-type Serializer<
+type Transformer<
   Model,
   Context,
   Config extends ModelFields<Model, Context> = {},
@@ -31,12 +31,12 @@ type Serializer<
 > = {
   setModelConfig: <T extends ModelFields<Model, Context>>(
     config: T
-  ) => Serializer<Model, Context, T, Custom>;
+  ) => Transformer<Model, Context, T, Custom>;
   setCustomConfig: <T extends CustomFields<Model, Context>>(
     custom: T
-  ) => Serializer<Model, Context, Config, T>;
+  ) => Transformer<Model, Context, Config, T>;
 
-  serialize: (
+  transform: (
     model: Model,
     ctx: Context
   ) => Promise<
@@ -44,23 +44,23 @@ type Serializer<
   >;
 };
 
-export type SerializerResult<T extends Serializer<any, any>> = MaybePromise<
-  ReturnType<T["serialize"]>
+export type TransformerResult<T extends Transformer<any, any>> = MaybePromise<
+  ReturnType<T["transform"]>
 >;
 
-export function createSerializer<
+export function createTransformer<
   Model,
   Context = void,
   Config extends ModelFields<Model, Context> = {},
   Custom extends CustomFields<Model, Context> = {}
->(): Serializer<Model, Context, Config, Custom> {
-  const makeSerializer = (
+>(): Transformer<Model, Context, Config, Custom> {
+  const makeTransformer = (
     modelConfig: ModelFields<Model, Context> = {},
     customConfig: CustomFields<Model, Context> = {}
   ) => {
-    const serializer: Serializer<Model, Context, Config, Custom> = {
+    const transformer: Transformer<Model, Context, Config, Custom> = {
       setModelConfig(config) {
-        return makeSerializer(config, customConfig) as Serializer<
+        return makeTransformer(config, customConfig) as Transformer<
           Model,
           Context,
           typeof config,
@@ -68,7 +68,7 @@ export function createSerializer<
         >;
       },
       setCustomConfig(custom) {
-        return makeSerializer(modelConfig, custom) as Serializer<
+        return makeTransformer(modelConfig, custom) as Transformer<
           Model,
           Context,
           Config,
@@ -76,7 +76,7 @@ export function createSerializer<
         >;
       },
 
-      async serialize(model, ctx) {
+      async transform(model, ctx) {
         const res = {} as Record<string, any>;
 
         for (const [key, value] of Object.entries(modelConfig)) {
@@ -94,8 +94,8 @@ export function createSerializer<
       },
     };
 
-    return serializer;
+    return transformer;
   };
 
-  return makeSerializer();
+  return makeTransformer();
 }

@@ -1,11 +1,11 @@
-import { createSerializer } from "../main";
+import { createTransformer } from "../main";
 
 type User = { id: string; email: string; password: string };
 type Post = { id: string; content: string; author: User };
 
 describe("main", () => {
   test("works!", async () => {
-    const a = createSerializer<User, { locale: string }>()
+    const a = createTransformer<User, { locale: string }>()
       .setModelConfig({
         id: true,
         email: () => 123,
@@ -16,14 +16,14 @@ describe("main", () => {
       });
 
     expect(
-      await a.serialize(
+      await a.transform(
         { id: "id", email: "email", password: "pass" },
         { locale: "ru" }
       )
     ).toEqual({ id: "id", email: 123, bla: "pass" });
 
     expect(
-      await a.serialize(
+      await a.transform(
         { id: "id", email: "email", password: "pass" },
         { locale: "en" }
       )
@@ -31,17 +31,17 @@ describe("main", () => {
   });
 
   test("nested fields", async () => {
-    const authorSerializer = createSerializer<User>().setModelConfig({
+    const authorSerializer = createTransformer<User>().setModelConfig({
       email: true,
     });
 
-    const postSerializer = createSerializer<Post>().setModelConfig({
+    const postSerializer = createTransformer<Post>().setModelConfig({
       content: true,
-      author: (model) => authorSerializer.serialize(model.author),
+      author: (model) => authorSerializer.transform(model.author),
     });
 
     expect(
-      await postSerializer.serialize({
+      await postSerializer.transform({
         id: "id",
         content: "content",
         author: { id: "id", email: "email", password: "pass" },
@@ -53,17 +53,43 @@ describe("main", () => {
   });
 
   test("immutable copy of serializers", async () => {
-    const baseSerializer = createSerializer<User>().setModelConfig({
+    const baseSerializer = createTransformer<User>().setModelConfig({
       email: true,
     });
     const withBla = baseSerializer.setCustomConfig({ bla: () => 123 });
     const withBlaBla = baseSerializer.setCustomConfig({ blabla: () => 123 });
 
     expect(
-      await withBla.serialize({ id: "id", email: "email", password: "pass" })
+      await withBla.transform({ id: "id", email: "email", password: "pass" })
     ).toEqual({ email: "email", bla: 123 });
     expect(
-      await withBlaBla.serialize({ id: "id", email: "email", password: "pass" })
+      await withBlaBla.transform({ id: "id", email: "email", password: "pass" })
     ).toEqual({ email: "email", blabla: 123 });
+  });
+
+  test("nested transformers example", async () => {
+    type UserWithFriends = User & { friends: User[] };
+
+    const user: UserWithFriends = {
+      id: "123",
+      email: "123",
+      password: "123",
+      friends: [{ id: "321", email: "321", password: "321" }],
+    };
+
+    const friendSerializer = createTransformer<User>().setModelConfig({
+      email: true,
+    });
+    const userSerializer = createTransformer<UserWithFriends>().setModelConfig({
+      id: true,
+      friends: (user) =>
+        Promise.all(user.friends.map((u) => friendSerializer.transform(u))),
+    });
+
+    const serializedUser = await userSerializer.transform(user);
+    expect(serializedUser).toEqual({
+      id: "123",
+      friends: [{ email: "321" }],
+    });
   });
 });

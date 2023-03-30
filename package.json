@@ -1,27 +1,34 @@
 {
-  "name": "ts-serialize",
-  "version": "0.0.1",
-  "description": "",
+  "name": "micro-transform",
+  "version": "0.1",
+  "description": "Tiny library to transform object values between different states; serializator and deserializator",
   "scripts": {
     "build": "vite build",
     "check": "tsc --noEmit && vitest typecheck --run",
     "test": "vitest",
     "testrun": "vitest run"
   },
-  "keywords": [],
-  "author": "Dan Kozlov <dkzlv@pm.me>",
+  "tags": [
+    "serialization",
+    "deserialization",
+    "serializer",
+    "typescript",
+    "typescript-serializer"
+  ],
+  "author": "Dan Kozlov <d.kzlv.ru@gmail.com>",
   "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
-  "main": "./dist/ts-serialize.umd.cjs",
-  "module": "./dist/ts-serialize.js",
+  "main": "./dist/micro-transform.umd.cjs",
+  "module": "./dist/micro-transform.js",
   "types": "./dist/main.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/ts-serialize.js",
-      "require": "./dist/ts-serialize.umd.cjs"
+      "import": "./dist/micro-transform.js",
+      "require": "./dist/micro-transform.umd.cjs"
     }
   },
   "devDependencies": {

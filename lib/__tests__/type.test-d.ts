@@ -1,4 +1,4 @@
-import { createSerializer, SerializerResult } from "../main";
+import { createTransformer, TransformerResult } from "../main";
 
 type User = { id: string; password: string; email: string };
 type Ctx = { locale: string };
@@ -15,14 +15,14 @@ describe("types", () => {
 
     // FIRST EXAMPLE
     {
-      const userSerializer = createSerializer<User>().setModelConfig({
+      const userSerializer = createTransformer<User>().setModelConfig({
         // Use `true` if you just want this field to be copied
         id: true,
         // Use function to transform the
         email: (user) => user.email.toLowerCase(),
       });
 
-      const result = await userSerializer.serialize(userExample);
+      const result = await userSerializer.transform(userExample);
       // -> { id: "id", email: "olivia@example.com" }
     }
 
@@ -31,13 +31,13 @@ describe("types", () => {
       // @ts-expect-error
       declare const db: { fetchRole: (id: string) => Promise<string> };
 
-      const userRoleSerializer = createSerializer<User>().setCustomConfig({
+      const userRoleSerializer = createTransformer<User>().setCustomConfig({
         role: async (user) => {
           return db.fetchRole(user.id);
         },
       });
 
-      const result = await userRoleSerializer.serialize(userExample);
+      const result = await userRoleSerializer.transform(userExample);
       // -> { role: "admin" }
     }
 
@@ -46,21 +46,21 @@ describe("types", () => {
       // @ts-expect-error
       declare function formatDate(dt: number, tz: string): string;
 
-      const userCreationSerializer = createSerializer<
+      const userCreationSerializer = createTransformer<
         User,
         { timezone: string }
       >().setModelConfig({
         createdAt: (user, { timezone }) => formatDate(user.createdAt, timezone),
       });
 
-      const result = await userCreationSerializer.serialize(userExample, {
+      const result = await userCreationSerializer.transform(userExample, {
         timezone: "Europe/Lisbon",
       }); // -> { createdAt: "..." }
     }
   });
 
   test(`works fully`, async () => {
-    const a = createSerializer<User, Ctx>()
+    const a = createTransformer<User, Ctx>()
       .setModelConfig({
         id: true,
         email: () => 123,
@@ -73,7 +73,7 @@ describe("types", () => {
         },
       });
 
-    const res = await a.serialize({} as unknown as User, {} as unknown as Ctx);
+    const res = await a.transform({} as unknown as User, {} as unknown as Ctx);
 
     type Serialized = {
       id: string;
@@ -82,21 +82,21 @@ describe("types", () => {
     };
 
     // @ts-expect-error
-    declare const b: SerializerResult<typeof a>;
+    declare const b: TransformerResult<typeof a>;
 
     expectTypeOf(b).toEqualTypeOf<Serialized>();
     expectTypeOf(res).toEqualTypeOf<Serialized>();
   });
 
   test("works only with model", async () => {
-    const a = createSerializer<User>().setModelConfig({
+    const a = createTransformer<User>().setModelConfig({
       // Use `true` if you just want this field to be copied
       id: true,
       // Use function to transform the
       email: (user) => user.email.toLowerCase(),
     });
 
-    const res = await a.serialize({} as unknown as User);
+    const res = await a.transform({} as unknown as User);
 
     expectTypeOf(res).toEqualTypeOf<{
       id: string;
@@ -105,12 +105,12 @@ describe("types", () => {
   });
 
   test("works only with custom", async () => {
-    const a = createSerializer<User>().setCustomConfig({
+    const a = createTransformer<User>().setCustomConfig({
       // Use function to transform the
       hey: (user) => user.email.toLowerCase(),
     });
 
-    const res = await a.serialize({} as unknown as User);
+    const res = await a.transform({} as unknown as User);
 
     expectTypeOf(res).toEqualTypeOf<{
       hey: string;
