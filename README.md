@@ -4,7 +4,7 @@ Tiny library to transform objects between different states.
 
 Suitable cases: serializing, deserializing, transforming into different shapes.
 
-- **Micro in size**. No deps. ~500B.
+- **Micro in size**. No deps. ~300B.
 - **TS-first**. All results of transformations are strictly typed.
 - **Versatile**. Uses plain functions under the hood, can be composed in any way.
 
