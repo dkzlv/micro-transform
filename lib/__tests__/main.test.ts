@@ -67,6 +67,24 @@ describe("main", () => {
     ).toEqual({ email: "email", blabla: 123 });
   });
 
+  test("merging configs", async () => {
+    const transformer = createTransformer<User>()
+      .setModelConfig({
+        email: true,
+      })
+      .setModelConfig({ password: () => 123 })
+      .setCustomConfig({ bla: () => 123 })
+      .setCustomConfig({ blabla: () => 123 });
+
+    expect(
+      await transformer.transform({
+        id: "id",
+        email: "email",
+        password: "pass",
+      })
+    ).toEqual({ email: "email", password: 123, bla: 123, blabla: 123 });
+  });
+
   test("nested transformers example", async () => {
     type UserWithFriends = User & { friends: User[] };
 

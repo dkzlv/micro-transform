@@ -1,4 +1,5 @@
 type MaybePromise<T> = T extends Promise<infer R> ? R : T;
+type Compute<T> = { [K in keyof T]: Compute<T[K]> } | never;
 
 type TransformerFn<Model, Context> = (model: Model, ctx: Context) => any;
 
@@ -31,16 +32,16 @@ type Transformer<
 > = {
   setModelConfig: <T extends ModelFields<Model, Context>>(
     config: T
-  ) => Transformer<Model, Context, T, Custom>;
+  ) => Transformer<Model, Context, Config & T, Custom>;
   setCustomConfig: <T extends CustomFields<Model, Context>>(
     custom: T
-  ) => Transformer<Model, Context, Config, T>;
+  ) => Transformer<Model, Context, Config, Custom & T>;
 
   transform: (
     model: Model,
     ctx: Context
   ) => Promise<
-    ExtractModelResults<Model, Config> & ExtractCustomResults<Custom>
+    Compute<ExtractModelResults<Model, Config> & ExtractCustomResults<Custom>>
   >;
 };
 
@@ -60,19 +61,24 @@ export function createTransformer<
   ) => {
     const transformer: Transformer<Model, Context, Config, Custom> = {
       setModelConfig(config) {
-        return makeTransformer(config, customConfig) as Transformer<
+        const newConf = { ...modelConfig, ...config };
+        return makeTransformer(newConf, customConfig) as Transformer<
           Model,
           Context,
-          typeof config,
+          typeof config & Config,
           Custom
         >;
       },
       setCustomConfig(custom) {
-        return makeTransformer(modelConfig, custom) as Transformer<
+        const newConf = {
+          ...customConfig,
+          ...custom,
+        };
+        return makeTransformer(modelConfig, newConf) as Transformer<
           Model,
           Context,
           Config,
-          typeof custom
+          typeof custom & Custom
         >;
       },
 

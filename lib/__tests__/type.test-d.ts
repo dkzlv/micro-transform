@@ -104,6 +104,25 @@ describe("types", () => {
     }>();
   });
 
+  test("model is merged", async () => {
+    const a = createTransformer<User>()
+      .setModelConfig({
+        // Use `true` if you just want this field to be copied
+        id: true,
+        // Use function to transform the
+        email: (user) => user.email.toLowerCase(),
+      })
+      .setModelConfig({ password: () => false });
+
+    const res = await a.transform({} as unknown as User);
+
+    expectTypeOf(res).toEqualTypeOf<{
+      id: string;
+      email: string;
+      password: boolean;
+    }>();
+  });
+
   test("works only with custom", async () => {
     const a = createTransformer<User>().setCustomConfig({
       // Use function to transform the
@@ -114,6 +133,24 @@ describe("types", () => {
 
     expectTypeOf(res).toEqualTypeOf<{
       hey: string;
+    }>();
+  });
+
+  test("custom is merged", async () => {
+    const a = createTransformer<User>()
+      .setCustomConfig({
+        // Use function to transform the
+        hey: (user) => user.email.toLowerCase(),
+      })
+      .setCustomConfig({
+        hey2: () => false,
+      });
+
+    const res = await a.transform({} as unknown as User);
+
+    expectTypeOf(res).toEqualTypeOf<{
+      hey: string;
+      hey2: boolean;
     }>();
   });
 });
