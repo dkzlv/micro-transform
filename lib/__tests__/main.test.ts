@@ -1,9 +1,13 @@
-import { createTransformer } from "../main";
+import { createTransformer, TransformerResult } from "../main";
 
 type User = { id: string; email: string; password: string };
 type Post = { id: string; content: string; author: User };
 
 const user: User = { id: "id", email: "email@email", password: "qweqwe" };
+
+beforeAll(() => {
+  vi.useFakeTimers();
+});
 
 describe("main", () => {
   test("works!", async () => {
@@ -124,4 +128,30 @@ describe("main", () => {
     const serializedUser = await userSerializer.transform(user);
     expect(serializedUser).toEqual({ id: user.id, email: user.email, bla: 1 });
   });
+
+  test("parallel promise execution", async () => {
+    const userSerializer = createTransformer<{}>().setCustomConfig({
+      bla1: async () => {
+        await delay(1000);
+        return 1;
+      },
+      bla2: async () => {
+        await delay(1000);
+        return 2;
+      },
+      blaString: async () => {
+        await delay(1500);
+        return "hey";
+      },
+    });
+
+    let data: TransformerResult<typeof userSerializer>;
+    const pr = userSerializer.transform(user).then((res) => (data = res));
+    vi.advanceTimersByTime(1500);
+    await pr;
+
+    expect(data!).toEqual({ bla1: 1, bla2: 2, blaString: "hey" });
+  });
 });
+
+const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms));

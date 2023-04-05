@@ -110,15 +110,29 @@ export function createTransformer<
           res = model as Record<string, any>;
         }
 
+        const promises: Promise<unknown>[] = [];
+        const executePossiblyAsyncFunction = (fn: Function, key: string) => {
+          const executed = fn(model, ctx);
+          if (executed instanceof Promise) {
+            executed.then((value) => {
+              res[key] = value;
+              return value;
+            });
+            promises.push(executed);
+          } else res[key] = executed;
+        };
+
         for (const [key, value] of Object.entries(modelConfig)) {
-          if (isFunction(value)) res[key] = await value(model, ctx);
+          if (isFunction(value)) executePossiblyAsyncFunction(value, key);
           else if (value) res[key] = model[key as keyof typeof model];
           else if (!value) delete res[key];
         }
 
         for (const [key, value] of Object.entries(customConfig)) {
-          if (isFunction(value)) res[key] = await value(model, ctx);
+          if (isFunction(value)) executePossiblyAsyncFunction(value, key);
         }
+
+        await Promise.all(promises);
 
         return res as any;
       },
