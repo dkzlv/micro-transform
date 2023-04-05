@@ -11,8 +11,8 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: resolve(__dirname, "lib/main.ts"),
-      name: "ts-serialize",
-      fileName: "ts-serialize",
+      name: "micro-transform",
+      fileName: "micro-transform",
     },
   },
   plugins: [
