@@ -3,6 +3,8 @@ import { createTransformer } from "../main";
 type User = { id: string; email: string; password: string };
 type Post = { id: string; content: string; author: User };
 
+const user: User = { id: "id", email: "email@email", password: "qweqwe" };
+
 describe("main", () => {
   test("works!", async () => {
     const a = createTransformer<User, { locale: string }>()
@@ -109,5 +111,17 @@ describe("main", () => {
       id: "123",
       friends: [{ email: "321" }],
     });
+  });
+
+  test("asterisk operator", async () => {
+    const userSerializer = createTransformer<User>()
+      .setModelConfig({
+        "*": true,
+        password: false,
+      })
+      .setCustomConfig({ bla: () => 1 });
+
+    const serializedUser = await userSerializer.transform(user);
+    expect(serializedUser).toEqual({ id: user.id, email: user.email, bla: 1 });
   });
 });

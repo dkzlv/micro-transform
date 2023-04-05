@@ -88,6 +88,13 @@ describe("types", () => {
     expectTypeOf(res).toEqualTypeOf<Serialized>();
   });
 
+  test('errors when adding non-existant "model" keys', () => {
+    createTransformer<User, Ctx>().setModelConfig({
+      // @ts-expect-error
+      bla: true,
+    });
+  });
+
   test("works only with model", async () => {
     const a = createTransformer<User>().setModelConfig({
       // Use `true` if you just want this field to be copied
@@ -152,5 +159,16 @@ describe("types", () => {
       hey: string;
       hey2: boolean;
     }>();
+  });
+
+  test("asterisk operator works", async () => {
+    const a = createTransformer<User>().setModelConfig({
+      "*": true,
+      email: false,
+    });
+
+    const res = await a.transform({} as unknown as User);
+
+    expectTypeOf(res).toEqualTypeOf<Pick<User, "id" | "password">>();
   });
 });

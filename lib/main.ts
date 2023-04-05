@@ -1,23 +1,55 @@
 type MaybePromise<T> = T extends Promise<infer R> ? R : T;
 type Compute<T> = { [K in keyof T]: Compute<T[K]> } | never;
+type ExcludeByValue<Obj, Condition> = FromEntries<
+  Exclude<Entries<Obj>, [any, Condition]>
+>;
+type Entries<Obj> = {
+  [K in keyof Obj]: [K, Obj[K]];
+}[keyof Obj];
+type FromEntries<Entries extends [any, any]> = {
+  [Entry in Entries as Entry[0]]: Entry[1];
+};
 
 type TransformerFn<Model, Context> = (model: Model, ctx: Context) => any;
+type Asterisk = "*";
+type IncludeAllBase = Record<Asterisk, boolean>;
+type IncludeAll = Record<Asterisk, true>;
 
-type ModelFields<Model, Context> = {
-  [key in keyof Model]?: true | TransformerFn<Model, Context>;
-};
+type ModelFields<Model, Context> =
+  | {
+      [key in keyof Model]?: boolean | TransformerFn<Model, Context>;
+    }
+  | Partial<IncludeAllBase>;
 type CustomFields<Model, Context> = Record<
   string,
   TransformerFn<Model, Context>
 >;
 
-type ExtractModelResults<Model, Config> = {
-  [Key in keyof Config]: Model extends { [key in Key]: any }
-    ? Config[Key] extends (...args: any[]) => any
-      ? MaybePromise<ReturnType<Config[Key]>>
-      : Model[Key]
-    : never;
-};
+type ExtractValues<Model, Config> = ExcludeByValue<
+  {
+    [K in keyof Model]: Config extends Record<K, boolean | unknown>
+      ? Config[K] extends false
+        ? never
+        : Config[K] extends (...args: any[]) => any
+        ? MaybePromise<ReturnType<Config[K]>>
+        : Model[K]
+      : Model[K];
+  },
+  never
+>;
+
+type ExtractForIncludeAll<Model, Config> = Config extends IncludeAll
+  ? ExtractValues<Model, Config>
+  : {};
+
+type ExtractTruthyKeys<Config> = Exclude<Entries<Config>, [any, false]>[0];
+
+type ExtractModelResults<Model, Config> = ExtractForIncludeAll<Model, Config> &
+  ExtractValues<
+    { [K in Extract<keyof Model, ExtractTruthyKeys<Config>>]: Model[K] },
+    Config
+  >;
+
 type ExtractCustomResults<Config> = {
   [Key in keyof Config]: Config[Key] extends (...args: any[]) => any
     ? MaybePromise<ReturnType<Config[Key]>>
@@ -62,41 +94,33 @@ export function createTransformer<
     const transformer: Transformer<Model, Context, Config, Custom> = {
       setModelConfig(config) {
         const newConf = { ...modelConfig, ...config };
-        return makeTransformer(newConf, customConfig) as Transformer<
-          Model,
-          Context,
-          typeof config & Config,
-          Custom
-        >;
+        return makeTransformer(newConf, customConfig) as any;
       },
       setCustomConfig(custom) {
         const newConf = {
           ...customConfig,
           ...custom,
         };
-        return makeTransformer(modelConfig, newConf) as Transformer<
-          Model,
-          Context,
-          Config,
-          typeof custom & Custom
-        >;
+        return makeTransformer(modelConfig, newConf) as any;
       },
 
       async transform(model, ctx) {
-        const res = {} as Record<string, any>;
+        let res = {} as Record<string, any>;
+        if (_includeAll in modelConfig && modelConfig[_includeAll]) {
+          res = model as Record<string, any>;
+        }
 
         for (const [key, value] of Object.entries(modelConfig)) {
-          if (value === true) res[key] = model[key as keyof typeof model];
-          else if (typeof value === "function")
-            res[key] = await value(model, ctx);
+          if (isFunction(value)) res[key] = await value(model, ctx);
+          else if (value) res[key] = model[key as keyof typeof model];
+          else if (!value) delete res[key];
         }
 
         for (const [key, value] of Object.entries(customConfig)) {
-          if (typeof value === "function") res[key] = await value(model, ctx);
+          if (isFunction(value)) res[key] = await value(model, ctx);
         }
 
-        return res as ExtractModelResults<Model, Config> &
-          ExtractCustomResults<Custom>;
+        return res as any;
       },
     };
 
@@ -104,4 +128,9 @@ export function createTransformer<
   };
 
   return makeTransformer();
+}
+
+const _includeAll = "*";
+function isFunction<T>(fn: T) {
+  return typeof fn === "function";
 }
