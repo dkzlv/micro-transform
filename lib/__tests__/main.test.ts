@@ -80,7 +80,8 @@ describe("main", () => {
       })
       .setModelConfig({ password: () => 123 })
       .setCustomConfig({ bla: () => 123 })
-      .setCustomConfig({ blabla: () => 123 });
+      .setCustomConfig({ blabla: () => 123 })
+      .setCustomConfig({ blabla: false });
 
     expect(
       await transformer.transform({
@@ -88,7 +89,7 @@ describe("main", () => {
         email: "email",
         password: "pass",
       })
-    ).toEqual({ email: "email", password: 123, bla: 123, blabla: 123 });
+    ).toEqual({ email: "email", password: 123, bla: 123 });
   });
 
   test("nested transformers example", async () => {

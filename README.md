@@ -4,8 +4,9 @@ Tiny library to transform objects between different states.
 
 Suitable cases: serializing, deserializing, transforming into different shapes.
 
-- **Micro in size**. No deps. ~300B.
-- **TS-first**. All results of transformations are strictly typed.
+- **Micro in size**. No deps. ~400B.
+- **TS-first**. All results of transformations are strictly typed and easily
+inspectable on hover.
 - **Versatile**. Uses plain functions under the hood, can be composed in any way.
 
 <a href="https://evilmartians.com/?utm_source=micro-transform">
@@ -17,9 +18,18 @@ Suitable cases: serializing, deserializing, transforming into different shapes.
 
 `npm install micro-transform`
 
-## Usage
+# Usage
 
-Use `.setModelConfig` to cherry-pick fields from a passed model.
+## `.setModelConfig`
+
+You can use this method to cherry-pick fields from a passed model. Possible values:
+
+1. `true` — this will include the field as is, without any transformations.
+2. `false` — this will exclude the field, that could be previously added by
+[asterisk operator](#asterisk-operator) or previously in the [chain](#immutability-and-chaining).
+3. function — we will execute it and pass both the model and the [context](#context) 
+into this function. If it'll return `Promise`, we'll await for it (those are executed
+in parallel).
 
 ```ts
 import { createTransformer } from "micro-transform";
@@ -43,8 +53,27 @@ const result = await userSerializer.transform(userExample);
 // -> { id: "id", email: "olivia@example.com" }
 ```
 
-With `.setCustomConfig` you can use enchance models with **new** fields and
-even use async functions to resolve their values:
+### Asterisk operator
+
+There's a special case for the `setModelConfig`: you can pass a key `"*"` to include
+all fields instead of listing them one by one.
+
+```ts
+const userSerializer = createTransformer<User>().setModelConfig({
+  "*": true,
+  password: false,
+});
+const result = await userSerializer.transform(userExample);
+// -> { id: "id", createdAt: 1602201600000, email: "olivia@EXAMPLE.COM" }
+```
+
+## `.setCustomConfig`
+
+With this you can enchance models with **new** fields. The key would be the new field
+name. As of values, it pretty much repeats the model config:
+
+1. function — that is the primary case, basically a computed property.
+2. `false` — that will exclude the custom field previously added in the chain.
 
 ```ts
 const userRoleSerializer = createTransformer<User>().setCustomConfig({
@@ -57,16 +86,21 @@ const result = await userRoleSerializer.transform(userExample);
 // -> { role: "admin" }
 ```
 
-And sometimes you just need a bit of extra context to serialize data. Define its
-structure as the second type argument, read the value in the transform function,
-and pass in the `transform` function:
+## Context
+
+Sometimes you need a bit of extra context to transform data. Say, you need user's
+locale to pick the correct translation, or user's timezone to localize time fields.
+
+In this case you can define context's structure its structure as the second type
+argument. You'll then need to pass it to `transform` function. If you do this right,
+you will be able to read the value in field-level transformer functions:
 
 ```ts
 const userCreationSerializer = createTransformer<
   User,
   { timezone: string }
 >().setModelConfig({
-  createdAt: (user, { timezone }) => formatDate(user.createdAt, timezone),
+  createdAt: (user, ctx) => formatDate(user.createdAt, ctx.timezone),
 });
 
 const result = await userCreationSerializer.transform(userExample, {
@@ -98,6 +132,34 @@ const userSerializer = createTransformer<UserWithFriends>().setModelConfig({
 
 const serializedUser = await userSerializer.transform(user);
 // { id: string, friends: { email: string }[] }
+```
+
+## Immutability and Chaining
+
+As you might have noticed, the basic API involves chaining model configs and
+custom configs. And, as you might have guessed by the header, all the configs
+are merged (not replaced), and all the intermediate transformers are immutable.
+
+You can you this to generate configs that are overall very similar, but differ in
+small details. For example, if you add or remove fields between different API versions,
+or user groups (admin, public, etc.).
+
+```ts
+const adminUserSerializer = createTransformer<User>()
+  .setModelConfig({
+    "*": true,
+  })
+  .setCustomConfig({ role: (user) => db.fetchRole(user.id) });
+
+// Hiding password
+const moderatorUserSerializer = adminUserSerializer.setModelConfig({
+  password: false,
+});
+
+// Hiding role
+const publicUserSerializer = moderatorUserSerializer.setCustomConfig({
+  role: false,
+});
 ```
 
 ## Validations

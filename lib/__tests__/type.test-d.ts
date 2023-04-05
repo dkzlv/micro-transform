@@ -150,13 +150,13 @@ describe("types", () => {
         hey: (user) => user.email.toLowerCase(),
       })
       .setCustomConfig({
+        hey: false,
         hey2: () => false,
       });
 
     const res = await a.transform({} as unknown as User);
 
     expectTypeOf(res).toEqualTypeOf<{
-      hey: string;
       hey2: boolean;
     }>();
   });

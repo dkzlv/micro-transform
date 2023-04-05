@@ -22,7 +22,7 @@ type ModelFields<Model, Context> =
   | Partial<IncludeAllBase>;
 type CustomFields<Model, Context> = Record<
   string,
-  TransformerFn<Model, Context>
+  TransformerFn<Model, Context> | false
 >;
 
 type ExtractValues<Model, Config> = ExcludeByValue<
@@ -50,11 +50,14 @@ type ExtractModelResults<Model, Config> = ExtractForIncludeAll<Model, Config> &
     Config
   >;
 
-type ExtractCustomResults<Config> = {
-  [Key in keyof Config]: Config[Key] extends (...args: any[]) => any
-    ? MaybePromise<ReturnType<Config[Key]>>
-    : never;
-};
+type ExtractCustomResults<Config> = ExcludeByValue<
+  {
+    [Key in keyof Config]: Config[Key] extends (...args: any[]) => any
+      ? MaybePromise<ReturnType<Config[Key]>>
+      : never;
+  },
+  never
+>;
 
 type Transformer<
   Model,
@@ -67,7 +70,7 @@ type Transformer<
   ) => Transformer<Model, Context, Config & T, Custom>;
   setCustomConfig: <T extends CustomFields<Model, Context>>(
     custom: T
-  ) => Transformer<Model, Context, Config, Custom & T>;
+  ) => Transformer<Model, Context, Config, Omit<Custom, keyof T> & T>;
 
   transform: (
     model: Model,
@@ -130,6 +133,7 @@ export function createTransformer<
 
         for (const [key, value] of Object.entries(customConfig)) {
           if (isFunction(value)) executePossiblyAsyncFunction(value, key);
+          else if (!value) delete res[key];
         }
 
         await Promise.all(promises);
@@ -145,6 +149,6 @@ export function createTransformer<
 }
 
 const _includeAll = "*";
-function isFunction<T>(fn: T) {
+function isFunction(fn: any): fn is Function {
   return typeof fn === "function";
 }
