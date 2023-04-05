@@ -9,6 +9,7 @@ type Entries<Obj> = {
 type FromEntries<Entries extends [any, any]> = {
   [Entry in Entries as Entry[0]]: Entry[1];
 };
+const transformerSymbol = Symbol();
 
 type TransformerFn<Model, Context> = (model: Model, ctx: Context) => any;
 type Asterisk = "*";
@@ -17,13 +18,25 @@ type IncludeAll = Record<Asterisk, true>;
 
 type ModelFields<Model, Context> =
   | {
-      [key in keyof Model]?: boolean | TransformerFn<Model, Context>;
+      [Key in keyof Model]?:
+        | boolean
+        | TransformerFn<Model, Context>
+        | Transformer<
+            Model[Key] extends Array<infer Item> ? Item : Model[Key],
+            Context
+          >;
     }
   | Partial<IncludeAllBase>;
 type CustomFields<Model, Context> = Record<
   string,
   TransformerFn<Model, Context> | false
 >;
+type ExtractNestedTransformerValue<
+  ModelValue,
+  PassedTransformer extends Transformer<any, any>
+> = ModelValue extends Array<unknown>
+  ? TransformerResult<PassedTransformer>[]
+  : TransformerResult<PassedTransformer>;
 
 type ExtractValues<Model, Config> = ExcludeByValue<
   {
@@ -32,6 +45,8 @@ type ExtractValues<Model, Config> = ExcludeByValue<
         ? never
         : Config[K] extends (...args: any[]) => any
         ? MaybePromise<ReturnType<Config[K]>>
+        : Config[K] extends Transformer<any, any>
+        ? ExtractNestedTransformerValue<Model[K], Config[K]>
         : Model[K]
       : Model[K];
   },
@@ -65,6 +80,7 @@ type Transformer<
   Config extends ModelFields<Model, Context> = {},
   Custom extends CustomFields<Model, Context> = {}
 > = {
+  [transformerSymbol]: 0;
   setModelConfig: <T extends ModelFields<Model, Context>>(
     config: T
   ) => Transformer<Model, Context, Config & T, Custom>;
@@ -95,6 +111,7 @@ export function createTransformer<
     customConfig: CustomFields<Model, Context> = {}
   ) => {
     const transformer: Transformer<Model, Context, Config, Custom> = {
+      [transformerSymbol]: 0,
       setModelConfig(config) {
         const newConf = { ...modelConfig, ...config };
         return makeTransformer(newConf, customConfig) as any;
@@ -114,20 +131,45 @@ export function createTransformer<
         }
 
         const promises: Promise<unknown>[] = [];
-        const executePossiblyAsyncFunction = (fn: Function, key: string) => {
+        const executePossiblyAsyncFunction = (
+          fn: Function,
+          key: string,
+          index?: number
+        ) => {
           const executed = fn(model, ctx);
+          const setValue = (value: unknown) => {
+            if (index === void 0) res[key] = value;
+            else res[key][index] = value;
+          };
+
           if (executed instanceof Promise) {
             executed.then((value) => {
-              res[key] = value;
+              setValue(value);
               return value;
             });
             promises.push(executed);
-          } else res[key] = executed;
+          } else setValue(executed);
         };
 
         for (const [key, value] of Object.entries(modelConfig)) {
           if (isFunction(value)) executePossiblyAsyncFunction(value, key);
-          else if (value) res[key] = model[key as keyof typeof model];
+          else if (typeof value === "object" && transformerSymbol in value) {
+            let valueToTransform = model[
+              key as keyof typeof model
+            ] as Model[keyof Model][];
+            const isArr = Array.isArray(valueToTransform);
+            if (isArr) res[key] = [];
+            else valueToTransform = [valueToTransform] as Model[keyof Model][];
+
+            for (let i = 0; i < valueToTransform.length; i++) {
+              const singleValue = valueToTransform[i];
+              executePossiblyAsyncFunction(
+                () => value.transform(singleValue, ctx),
+                key,
+                isArr ? i : void 0
+              );
+            }
+          } else if (value) res[key] = model[key as keyof typeof model];
           else if (!value) delete res[key];
         }
 

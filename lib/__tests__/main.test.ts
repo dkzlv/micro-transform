@@ -153,6 +153,53 @@ describe("main", () => {
 
     expect(data!).toEqual({ bla1: 1, bla2: 2, blaString: "hey" });
   });
+
+  test("passing nested serializers with promises to arrays and single item", async () => {
+    type EnhancedUser = User & { friends: User[]; bestFriend: User };
+
+    const getBaseTransformer = <T extends User>() =>
+      createTransformer<T, { timezone: string }>()
+        .setModelConfig({
+          email: true,
+        })
+        .setCustomConfig({
+          asyncValue: async (model, ctx) => {
+            await delay();
+            return model.id + ctx.timezone;
+          },
+        });
+
+    const userTransformer = getBaseTransformer();
+
+    const transformer = getBaseTransformer<EnhancedUser>().setModelConfig({
+      friends: userTransformer,
+      bestFriend: userTransformer,
+    });
+
+    const u: EnhancedUser = {
+      ...user,
+      friends: [user, user],
+      bestFriend: user,
+    };
+
+    let data: TransformerResult<typeof transformer>;
+    const pr = transformer
+      .transform(u, { timezone: "e" })
+      .then((res) => (data = res));
+    vi.advanceTimersByTime(500);
+    await pr;
+
+    const baseResult = {
+      email: u.email,
+      asyncValue: u.id + "e",
+    };
+
+    expect(data!).toEqual({
+      ...baseResult,
+      bestFriend: baseResult,
+      friends: [baseResult, baseResult],
+    });
+  });
 });
 
 const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms));

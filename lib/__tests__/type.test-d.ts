@@ -171,4 +171,28 @@ describe("types", () => {
 
     expectTypeOf(res).toEqualTypeOf<Pick<User, "id" | "password">>();
   });
+
+  test("passing a transformer in the place of a field works with arrays and single fields", async () => {
+    type EnhancedUser = User & { friends: User[]; bestFriend: User };
+
+    const getBaseTransformer = <T extends User>() =>
+      createTransformer<T>().setModelConfig({
+        email: true,
+      });
+
+    const userTransformer = getBaseTransformer();
+
+    const a = getBaseTransformer<EnhancedUser>().setModelConfig({
+      friends: userTransformer,
+      bestFriend: userTransformer,
+    });
+
+    const res = await a.transform({} as unknown as EnhancedUser);
+
+    expectTypeOf(res).toEqualTypeOf<{
+      email: string;
+      friends: { email: string }[];
+      bestFriend: { email: string };
+    }>();
+  });
 });

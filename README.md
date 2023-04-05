@@ -4,7 +4,7 @@ Tiny library to transform objects between different states.
 
 Suitable cases: serializing, deserializing, transforming into different shapes.
 
-- **Micro in size**. No deps. ~400B.
+- **Micro in size**. No deps. ~500B.
 - **TS-first**. All results of transformations are strictly typed and easily
 inspectable on hover.
 - **Versatile**. Uses plain functions under the hood, can be composed in any way.
@@ -30,6 +30,8 @@ You can use this method to cherry-pick fields from a passed model. Possible valu
 3. function — we will execute it and pass both the model and the [context](#context) 
 into this function. If it'll return `Promise`, we'll await for it (those are executed
 in parallel).
+1. nested transformers! Read more about it in the [Nested Transformers](#nested-transformers)
+section.
 
 ```ts
 import { createTransformer } from "micro-transform";
@@ -43,9 +45,7 @@ const userExample = {
 type User = typeof userExample;
 
 const userSerializer = createTransformer<User>().setModelConfig({
-  // Use `true` if you just want this field to be copied
   id: true,
-  // Use function to transform the value. Async functions works as well!
   email: (user) => user.email.toLowerCase(),
 });
 
@@ -108,16 +108,19 @@ const result = await userCreationSerializer.transform(userExample, {
 }); // -> { createdAt: "..." }
 ```
 
-## Nested fields and Arrays
+## Nested Transformers
 
-Nothing special is needed. Model config transformers or Custom transformers can
-can use other transformers. It's quite simple under the hood.
+Since we accept functions on the field-level transformers, you *could have* made your
+own solution for nested transformers, but instead we added a built-in solution for that!
 
-Keep in mind, though, that transforms are _always_ async function, so if you run them
-against an array of values, you need to wrap them with `Promise.all`.
+You can pass a transformer as field value, and it will:
+
+1. correctly transform both arrays and single entities
+2. pass on the context from the root transformer to nested transformers
+3. evaluate all promises in parallel
 
 ```ts
-type UserWithFriends = User & { friends: User[] };
+type UserWithFriends = User & { friends: User[], bestFriend: User };
 
 declare const user: UserWithFriends;
 
@@ -126,12 +129,12 @@ const friendSerializer = createTransformer<User>().setModelConfig({
 });
 const userSerializer = createTransformer<UserWithFriends>().setModelConfig({
   id: true,
-  friends: (user) =>
-    Promise.all(user.friends.map((u) => friendSerializer.transform(u))),
+  friends: friendSerializer,
+  bestFriend: friendSerializer,
 });
 
 const serializedUser = await userSerializer.transform(user);
-// { id: string, friends: { email: string }[] }
+// { id: string, friends: { email: string }[], bestFriend: { email: string } }
 ```
 
 ## Immutability and Chaining
