@@ -1,6 +1,6 @@
 {
   "name": "micro-transform",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tiny library to transform object values between different states; serializator and deserializator",
   "scripts": {
     "build": "vite build",
