@@ -83,7 +83,7 @@ type Transformer<
   [transformerSymbol]: 0;
   setModelConfig: <T extends ModelFields<Model, Context>>(
     config: T
-  ) => Transformer<Model, Context, Config & T, Custom>;
+  ) => Transformer<Model, Context, Omit<Config, keyof T> & T, Custom>;
   setCustomConfig: <T extends CustomFields<Model, Context>>(
     custom: T
   ) => Transformer<Model, Context, Config, Omit<Custom, keyof T> & T>;

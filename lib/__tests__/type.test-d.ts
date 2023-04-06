@@ -121,13 +121,26 @@ describe("types", () => {
       })
       .setModelConfig({ password: () => false });
 
-    const res = await a.transform({} as unknown as User);
+    {
+      const res = await a.transform({} as unknown as User);
 
-    expectTypeOf(res).toEqualTypeOf<{
-      id: string;
-      email: string;
-      password: boolean;
-    }>();
+      expectTypeOf(res).toEqualTypeOf<{
+        id: string;
+        email: string;
+        password: boolean;
+      }>();
+    }
+
+    const b = a.setModelConfig({ password: true });
+    {
+      const res = await b.transform({} as unknown as User);
+
+      expectTypeOf(res).toEqualTypeOf<{
+        id: string;
+        email: string;
+        password: string;
+      }>();
+    }
   });
 
   test("works only with custom", async () => {
