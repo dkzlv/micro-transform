@@ -10,7 +10,7 @@ type User = {
   friends: User[];
 };
 declare const user: User;
-declare const formatDate: (ts: number, tz: string) => string;
+declare const formatDate: (ts: number, tz?: string) => string;
 
 declare const db: {
   fetchRole: (id: string) => Promise<"admin" | "moderator">;
@@ -77,3 +77,12 @@ const forPublic = await publicUser.transform(user, {
  *  }[];
  * }
  */
+
+import type { TransformerResult } from "./main";
+
+const dateSerializer = createTransformer<User>().setModelConfig({
+  createdAt: (user) => formatDate(user.createdAt),
+});
+
+type SerializedDate = TransformerResult<typeof dateSerializer>;
+// { createdAt: string }

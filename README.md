@@ -67,6 +67,22 @@ const result = await userSerializer.transform(userExample);
 // -> { id: "id", createdAt: 1602201600000, email: "olivia@EXAMPLE.COM" }
 ```
 
+### Infer the result type
+
+The library ships with a small importable helper that can help you work with the
+resulting data on the type level:
+
+```ts
+import type { TransformerResult } from 'micro-transform';
+
+const dateSerializer = createTransformer<User>().setModelConfig({
+  createdAt: (user) => formatDate(user.createdAt),
+});
+
+type SerializedDate = TransformerResult<typeof dateSerializer>;
+// { createdAt: string }
+```
+
 ## `.setCustomConfig`
 
 With this you can enchance models with **new** fields. The key would be the new field
