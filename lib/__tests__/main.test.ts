@@ -4,9 +4,14 @@ type User = { id: string; email: string; password: string };
 type Post = { id: string; content: string; author: User };
 
 const user: User = { id: "id", email: "email@email", password: "qweqwe" };
+const copy = structuredClone(user);
 
 beforeAll(() => {
   vi.useFakeTimers();
+});
+
+afterEach(() => {
+  expect(copy).toEqual(user);
 });
 
 describe("main", () => {
@@ -199,6 +204,17 @@ describe("main", () => {
       bestFriend: baseResult,
       friends: [baseResult, baseResult],
     });
+  });
+
+  test("immutable and equal results with multiple calls", async () => {
+    const userSerializer = createTransformer<User>().setModelConfig({
+      "*": true,
+      password: false,
+    });
+
+    expect(await userSerializer.transform(user)).toEqual(
+      await userSerializer.transform(user)
+    );
   });
 });
 

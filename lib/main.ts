@@ -127,7 +127,7 @@ export function createTransformer<
       async transform(model, ctx) {
         let res = {} as Record<string, any>;
         if (_includeAll in modelConfig && modelConfig[_includeAll]) {
-          res = model as Record<string, any>;
+          res = { ...model } as Record<string, any>;
         }
 
         const promises: Promise<unknown>[] = [];
