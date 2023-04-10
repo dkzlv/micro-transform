@@ -16,6 +16,10 @@ inspectable on hover.
 
 ## Install
 
+Try it online [on StackBlitz](https://stackblitz.com/edit/react-ts-frmvd6?file=App.tsx).
+
+Or install using your favorite package manager:
+
 `npm install micro-transform`
 
 # Usage
