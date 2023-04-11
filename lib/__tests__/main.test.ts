@@ -216,6 +216,24 @@ describe("main", () => {
       await userSerializer.transform(user)
     );
   });
+
+  test("lots of nesting", async () => {
+    type Wrap<Base> = { a: Base };
+    type A1 = Wrap<string>;
+    type A2 = Wrap<A1>;
+    type A3 = Wrap<A2>;
+    type A4 = Wrap<A3>;
+    type A5 = Wrap<A4>;
+    const a1 = createTransformer<A1>().setModelConfig({ a: () => "no" });
+    const a2 = createTransformer<A2>().setModelConfig({ a: a1 });
+    const a3 = createTransformer<A3>().setModelConfig({ a: a2 });
+    const a4 = createTransformer<A4>().setModelConfig({ a: a3 });
+    const a5 = createTransformer<A5>().setModelConfig({ a: a4 });
+
+    expect(
+      await a5.transform({ a: { a: { a: { a: { a: "hey" } } } } })
+    ).toEqual({ a: { a: { a: { a: { a: "no" } } } } });
+  });
 });
 
 const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms));
