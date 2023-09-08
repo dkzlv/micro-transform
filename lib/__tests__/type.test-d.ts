@@ -211,24 +211,56 @@ describe("types", () => {
   });
 
   test("works with zod schema and inference", async () => {
-    const schema = z.object({
-      bla: z.number(),
-      bla2: z.string().optional(),
-    });
+    const arrSchema = z.array(
+      z.object({ key: z.string(), value: z.number().nullable() })
+    );
+    const schema = z
+      .object({
+        id: z.union([z.string(), z.number()]),
+      })
+      .merge(z.object({ num: z.number() }))
+      .merge(z.object({ str: z.string().optional() }))
+      .merge(
+        z.object({
+          nested: z.object({
+            arr: arrSchema,
+          }),
+        })
+      );
 
     type Schema = z.infer<typeof schema>;
 
     const schemaSerializer = createTransformer<Schema>().setModelConfig({
       "*": true,
     });
-
     const res = await schemaSerializer.transform({} as unknown as any);
 
-    // @ts-expect-error: well, in fact there shouldn't be any error here.
-    // The types are in fact equal, but somehow they are not.
-    expectTypeOf(res).toEqualTypeOf<{
-      bla: number;
-      bla2: string | undefined;
+    expectTypeOf(res).toMatchTypeOf<{
+      id: string | number;
+      num: number;
+      str: string | undefined;
+      nested: {
+        arr: {
+          value: number | null;
+          key: string;
+        }[];
+      };
     }>();
+  });
+
+  test("you can pipe one TransformerResult into another transformer", async () => {
+    const a = createTransformer<User>().setModelConfig({
+      "*": true,
+      email: false,
+    });
+
+    type AResult = TransformerResult<typeof a>;
+
+    const b = createTransformer<AResult>().setModelConfig({
+      id: (v) => parseInt(v.id),
+    });
+    const res = await b.transform(null as any);
+
+    expectTypeOf(res).toEqualTypeOf<{ id: number }>();
   });
 });
