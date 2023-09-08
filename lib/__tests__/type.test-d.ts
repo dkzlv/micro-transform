@@ -1,4 +1,5 @@
 import { createTransformer, TransformerResult } from "../main";
+import { z } from "zod";
 
 type User = { id: string; password: string; email: string };
 type Ctx = { locale: string };
@@ -206,6 +207,28 @@ describe("types", () => {
       email: string;
       friends: { email: string }[];
       bestFriend: { email: string };
+    }>();
+  });
+
+  test("works with zod schema and inference", async () => {
+    const schema = z.object({
+      bla: z.number(),
+      bla2: z.string().optional(),
+    });
+
+    type Schema = z.infer<typeof schema>;
+
+    const schemaSerializer = createTransformer<Schema>().setModelConfig({
+      "*": true,
+    });
+
+    const res = await schemaSerializer.transform({} as unknown as any);
+
+    // @ts-expect-error: well, in fact there shouldn't be any error here.
+    // The types are in fact equal, but somehow they are not.
+    expectTypeOf(res).toEqualTypeOf<{
+      bla: number;
+      bla2: string | undefined;
     }>();
   });
 });
